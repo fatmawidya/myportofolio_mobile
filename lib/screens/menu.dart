@@ -12,11 +12,14 @@ class MyHomePage extends StatelessWidget {
   final List<ItemHomepage> items = [
     ItemHomepage("Lihat Proyek", Icons.folder, Colors.blue.shade800),
     ItemHomepage("Tambah Proyek", Icons.add_circle, Colors.green.shade800),
+    ItemHomepage("Tambah Edukasi", Icons.school, Colors.teal.shade800),
     ItemHomepage("Logout", Icons.logout, Colors.red.shade800),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final actionColumns = MediaQuery.sizeOf(context).width < 480 ? 2 : 3;
+
     // Scaffold menyediakan struktur visual dasar halaman (AppBar, Body, SnackBar).
     return Scaffold(
       // AppBar menampilkan bar bagian atas halaman aplikasi.
@@ -39,9 +42,15 @@ class MyHomePage extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                InfoCard(title: 'NPM', content: npm),
-                InfoCard(title: 'Name', content: nama),
-                InfoCard(title: 'Class', content: kelas),
+                Flexible(
+                  child: InfoCard(title: 'NPM', content: npm),
+                ),
+                Flexible(
+                  child: InfoCard(title: 'Name', content: nama),
+                ),
+                Flexible(
+                  child: InfoCard(title: 'Class', content: kelas),
+                ),
               ],
             ),
 
@@ -62,7 +71,6 @@ class MyHomePage extends StatelessWidget {
                     ),
                   ),
 
-                  // GridView menampilkan kartu tombol dalam tata letak kisi 3 kolom.
                   GridView.count(
                     primary: false,
                     physics: const NeverScrollableScrollPhysics(),
@@ -70,7 +78,7 @@ class MyHomePage extends StatelessWidget {
                     padding: const EdgeInsets.all(20),
                     crossAxisSpacing: 10,
                     mainAxisSpacing: 10,
-                    crossAxisCount: 3,
+                    crossAxisCount: actionColumns,
                     // shrinkWrap agar ukuran kisi menyesuaikan tinggi konten anak.
                     shrinkWrap: true,
                     children: items.map((ItemHomepage item) {
@@ -108,7 +116,7 @@ class InfoCard extends StatelessWidget {
           children: [
             Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8.0),
-            Text(content),
+            Text(content, textAlign: TextAlign.center),
           ],
         ),
       ),
