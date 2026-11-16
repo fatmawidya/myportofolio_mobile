@@ -1,6 +1,6 @@
 # MY PORTFOLIO MOBILE — Fatma Widya Rachma
 
-Aplikasi portofolio pribadi berbasis Flutter yang menampilkan identitas pemilik dan menu aksi. Proyek ini melanjutkan Tutorial 08 untuk Individual Assignment 7 Pemrograman Berbasis Platform.
+Aplikasi portofolio pribadi berbasis Flutter untuk Pemrograman Berbasis Platform. Tugas 7 membangun halaman profil dan menu aksi. Tutorial 9 menambahkan navigasi dan formulir proyek. Tugas 8 menerapkan pola yang sama pada formulir Edukasi.
 
 ---
 
@@ -19,19 +19,26 @@ Aplikasi portofolio pribadi berbasis Flutter yang menampilkan identitas pemilik 
 
 Halaman `MyPortfolio` menampilkan tiga `InfoCard` berlabel **NPM**, **Name**, dan **Class**, diikuti pesan sambutan. `MyHomePage` dibangun sebagai `StatelessWidget` dengan tema Material 3.
 
-### 2. Menu Aksi Portofolio
+### 2. Menu Aksi dan Drawer
 
-Tiga `ItemCard` berikon disusun dalam grid tiga kolom.
+Empat kartu aksi disusun dalam grid dua kolom pada layar sempit dan tiga kolom pada layar yang lebih lebar. Kartu **Tambah Edukasi** langsung membuka formulir. Kartu lain menampilkan `SnackBar` dengan nama aksi.
 
-| Menu | Ikon |
+| Menu | Perilaku |
 | --- | --- |
-| Lihat Proyek | Folder |
-| Tambah Proyek | Tambah dalam lingkaran |
-| Logout | Keluar |
+| Lihat Proyek | Menampilkan umpan balik melalui `SnackBar`. |
+| Tambah Proyek | Membuka formulir proyek dari Tutorial 9. |
+| Tambah Edukasi | Membuka formulir Edukasi dari Tugas 8. |
+| Logout | Menampilkan umpan balik melalui `SnackBar`. |
 
-### 3. Umpan Balik Interaktif
+Drawer yang sama digunakan di halaman utama dan kedua formulir. Drawer menyediakan pilihan **Home**, **Add Project**, dan **Add Education**.
 
-Saat kartu ditekan, aplikasi menampilkan `SnackBar` dengan format “Kamu telah menekan tombol [Nama Tombol]!”. Pesan sebelumnya ditutup saat pengguna menekan kartu lagi.
+### 3. Formulir Tambah Edukasi
+
+Formulir mengikuti model Edukasi di portofolio Django. Pengguna dapat mengisi nama institusi, jenjang, jurusan, tahun masuk, tahun selesai, URL logo, dan deskripsi. Tahun selesai dan URL logo bersifat opsional. Jika diisi, tahun selesai harus sama dengan atau setelah tahun masuk, dan URL logo harus memakai HTTP atau HTTPS.
+
+Tombol **Simpan** memvalidasi isian lalu menampilkan **Ringkasan Edukasi** dalam dialog. Tombol **OK** menutup dialog dan mengembalikan pengguna ke formulir dengan isian yang sama.
+
+Kartu **Pratinjau Edukasi** diperbarui saat pengguna mengubah institusi, jenjang, jurusan, atau tahun. Setelah tahun masuk diisi, kartu menampilkan status **Sedang menempuh pendidikan** selama tahun selesai masih kosong.
 
 ---
 
@@ -40,10 +47,19 @@ Saat kartu ditekan, aplikasi menampilkan `SnackBar` dengan format “Kamu telah 
 ```text
 myportofolio_mobile/
 ├── lib/
-│   ├── main.dart              # Titik masuk, MaterialApp, dan tema
-│   └── menu.dart              # MyHomePage, InfoCard, ItemHomepage, dan ItemCard
+│   ├── main.dart                  # Titik masuk, MaterialApp, dan tema
+│   ├── screens/
+│   │   ├── menu.dart              # Halaman utama, kartu profil, dan data menu
+│   │   ├── project_form.dart      # Formulir Tambah Proyek
+│   │   └── education_form.dart    # Formulir Tambah Edukasi
+│   ├── validators/
+│   │   └── education_validators.dart # Validasi tahun dan URL logo
+│   └── widgets/
+│       ├── education_preview_card.dart # Tampilan pratinjau Edukasi
+│       ├── left_drawer.dart       # Drawer yang dipakai bersama
+│       └── project_card.dart      # Kartu aksi dan navigasi dari halaman utama
 ├── test/
-│   └── widget_test.dart       # Tes penghitung bawaan template Flutter
+│   └── widget_test.dart           # Tes navigasi dan formulir Tambah Proyek
 ├── android/                   # Konfigurasi target Android
 ├── ios/                       # Konfigurasi target iOS
 ├── web/                       # Konfigurasi target web
@@ -84,7 +100,7 @@ Kalau repositori sudah ada di komputer, buka terminal di folder yang berisi `pub
 flutter pub get
 ```
 
-Aplikasi saat ini memakai data profil lokal di `lib/menu.dart`. Setup Flutter sudah cukup untuk menjalankan halaman utama.
+Aplikasi memakai data profil lokal di `lib/screens/menu.dart`. Formulir menampilkan ringkasan isian di aplikasi, sehingga penyiapan Flutter dan Chrome sudah cukup untuk mencobanya.
 
 ### 4. Jalankan aplikasi di Chrome
 
@@ -93,7 +109,7 @@ flutter devices
 flutter run -d chrome
 ```
 
-Pastikan Chrome muncul dalam daftar perangkat. Setelah aplikasi terbuka, periksa tiga kartu profil dan tekan ketiga kartu aksi untuk melihat pesan `SnackBar` masing-masing. Tekan `q` di terminal untuk menghentikan aplikasi.
+Pastikan Chrome muncul dalam daftar perangkat. Setelah aplikasi terbuka, gunakan langkah pengujian di bawah untuk mencoba formulir Edukasi. Tekan `q` di terminal untuk menghentikan aplikasi.
 
 Untuk menjalankan di Android, siapkan Android SDK dan nyalakan emulator atau sambungkan perangkat fisik dengan USB debugging. Ambil ID perangkat dari `flutter devices`, lalu jalankan `flutter run -d ID_PERANGKAT` dengan mengganti `ID_PERANGKAT` sesuai daftar.
 
@@ -103,7 +119,14 @@ Untuk menjalankan di Android, siapkan Android SDK dan nyalakan emulator atau sam
 flutter analyze
 ```
 
-Hasil yang diharapkan untuk Tugas 7 adalah `No issues found!`.
+Hasil yang diharapkan adalah `No issues found!`.
+
+### Pengujian Formulir Edukasi
+
+1. Buka formulir lewat kartu **Tambah Edukasi**. Coba kembali dengan tombol kembali perangkat jika tersedia. Buka lagi lewat **Add Education** di drawer, lalu gunakan **Home** untuk kembali ke halaman utama di Chrome.
+2. Tekan **Simpan** saat nama institusi kosong. Pastikan pesan muncul pada kolom tersebut. Coba juga tahun masuk `2024` dan tahun selesai `2023`, atau URL logo `ftp://example.com/logo.png`. Pesan harus muncul pada kolom yang salah.
+3. Isi seluruh kolom yang wajib dan pilih jenjang. Coba tahun masuk `2024`, tahun selesai `2027`, dan URL logo `https://example.com/logo.png`. Tekan **Simpan**, cocokkan ketujuh isian di dialog, lalu tekan **OK** untuk kembali ke formulir.
+4. Ulangi pada Chrome dengan lebar layar sekitar 360 piksel. Gulir formulir dan pastikan semua kolom serta tombol **Simpan** bisa dijangkau.
 
 ---
 
@@ -113,75 +136,33 @@ Versi Django tersedia sebagai proyek terpisah. [Fatma's Portfolio Web](https://f
 
 ---
 
-### Tugas 7
+### Tugas 8
 
-1. **Jelaskan apa yang dimaksud dengan widget tree pada Flutter dan bagaimana hubungan induk-anak (parent-child) bekerja antar-widget!**
+1. **Jelaskan perbedaan antara `Navigator.push()`, `Navigator.pushReplacement()`, dan `Navigator.pop()`. Metode apa yang digunakan untuk membuka formulir dari kartu aksi? Jelaskan juga bagaimana opsi Home di drawer membawa pengguna kembali ke halaman utama.**
 
-   Widget tree adalah susunan widget yang mendeskripsikan antarmuka secara hierarkis. Widget induk menempatkan widget lain di bawahnya, misalnya melalui properti `child` untuk satu anak atau `children` untuk beberapa anak. Di aplikasi ini, `Row` memiliki tiga `InfoCard` sebagai anak. Setiap `InfoCard` membangun `Card` yang di dalamnya terdapat `Column` untuk menyusun label dan nilai identitas secara vertikal. Dalam proses layout, induk memberi batas ukuran kepada anak, anak memilih ukuran dalam batas tersebut, lalu induk menentukan posisi anak.
+   `push()` menaruh halaman baru di atas halaman yang sedang aktif. Kartu **Tambah Edukasi** memakainya supaya halaman utama masih ada di bawah form dan tombol kembali perangkat bisa membukanya lagi. `pushReplacement()` mengganti halaman aktif dengan halaman baru. Opsi **Home** di drawer memakainya untuk mengganti halaman form dengan `MyHomePage`. `pop()` mengeluarkan rute teratas. Di form Edukasi, tombol **OK** memanggilnya untuk menutup dialog dan kembali ke form dengan isian yang sama.
 
-2. **Sebutkan semua widget yang kamu gunakan dalam proyek ini dan jelaskan fungsinya masing-masing!**
+2. **Bagaimana susunan `Scaffold`, `AppBar`, dan `Drawer` membantu menjaga struktur halaman tetap konsisten? Berikan satu contoh penggunaan warna tema portofolio di lebih dari satu halaman.**
 
-   | Widget | Fungsi dalam aplikasi |
-   | --- | --- |
-   | `MyApp` | Menjadi widget awal yang dipasang oleh `runApp`. |
-   | `MaterialApp` | Mengatur judul aplikasi, tema Material 3, dan halaman awal. |
-   | `MyHomePage` | Menyusun halaman profil dan menu aksi. |
-   | `Scaffold` | Menyediakan struktur halaman yang memuat `AppBar`, isi halaman, dan area tampilan `SnackBar`. |
-   | `AppBar` | Menampilkan judul MyPortfolio di bagian atas halaman. |
-   | `SingleChildScrollView` | Membuat isi halaman bisa digulir saat tinggi layar terbatas. |
-   | `Column` | Menyusun elemen secara vertikal, seperti label dan nilai identitas. |
-   | `Row` | Menyusun tiga kartu profil secara horizontal. |
-   | `InfoCard` | Menampilkan label dan nilai untuk NPM, nama, atau kelas. |
-   | `Card` | Memberi bentuk kartu dan elevasi pada informasi profil. |
-   | `Container` | Mengatur lebar dan padding kartu profil serta padding kartu aksi. |
-   | `Text` | Menampilkan judul, identitas, pesan sambutan, label aksi, dan isi `SnackBar`. |
-   | `SizedBox` | Memberi jarak tetap di antara elemen. |
-   | `Center` | Memusatkan bagian menu dan isi kartu aksi. |
-   | `Padding` | Memberi jarak di sekitar pesan sambutan dan di bawah ikon kartu aksi. |
-   | `GridView.count` | Menyusun kartu aksi dalam tiga kolom dengan tinggi kartu yang ditentukan. |
-   | `ItemCard` | Menampilkan satu aksi dengan warna, ikon, label, dan respons saat ditekan. |
-   | `Material` | Menyediakan permukaan dan warna latar kartu aksi. |
-   | `InkWell` | Menangani ketukan dan memberikan efek sentuh pada permukaan kartu. |
-   | `Icon` | Menampilkan simbol untuk tiap aksi. |
-   | `SnackBar` | Menampilkan pesan singkat sesuai tombol yang ditekan. |
-   | `Theme` | Menyediakan skema warna yang diakses halaman melalui `Theme.of(context)`. |
-   | `MediaQuery` | Menyediakan ukuran area tampilan untuk menghitung lebar `InfoCard`. |
-   | `ScaffoldMessenger` | Mengelola penutupan dan penayangan `SnackBar`. |
+   `Scaffold` mengatur tempat untuk bilah atas, isi halaman, dan drawer. `AppBar` memberi judul sesuai halaman, sedangkan `LeftDrawer` menyediakan menu yang sama dari halaman utama dan kedua formulir. Contohnya, `AppBar` di halaman utama dan form Edukasi sama-sama mengambil warna latar dari `Theme.of(context).colorScheme.primary`, dengan judul dan ikon berwarna putih.
 
-   `Theme`, `MediaQuery`, dan `ScaffoldMessenger` diakses dari widget leluhur. `ItemHomepage` berperan sebagai model data yang menyimpan nama, ikon, dan warna untuk setiap kartu aksi.
+3. **Mengapa tata letak tersebut dipilih untuk formulir? Jelaskan peran widget pengatur jarak dan widget penggulir ketika ruang layar terbatas.**
 
-3. **Apa fungsi dari widget MaterialApp? Jelaskan mengapa widget ini umumnya digunakan sebagai root widget pada aplikasi Flutter!**
+   Ketujuh input disusun vertikal dengan `Column` supaya pengguna bisa mengisi form dari atas ke bawah. `EdgeInsets.all(16)` memberi jarak antara isi form dan tepi layar, sedangkan `SizedBox` memberi jarak antarinput. `SingleChildScrollView` membuat kolom di bagian bawah dan tombol **Simpan** tetap bisa dijangkau saat layar sempit atau ruang berkurang karena keyboard.
 
-   `MaterialApp` menyediakan konfigurasi tingkat aplikasi, seperti tema Material, navigasi, dan halaman awal. Penempatannya di bagian atas widget tree membuat konfigurasi itu dapat digunakan oleh halaman di bawahnya. Pada proyek ini, `MyApp` mengembalikan `MaterialApp` yang memakai tema Material 3 dan menetapkan `MyHomePage()` sebagai `home`. Halaman utama mengambil warna `AppBar` dari tema melalui `Theme.of(context)`.
+4. **Apa peran `GlobalKey<FormState>`, `validator`, dan `validate()` saat tombol Simpan ditekan? Berikan satu contoh nilai yang ditolak oleh validasi dan jelaskan mengapa memilih jenis input atau papan ketik saja belum cukup.**
 
-4. **Jelaskan perbedaan antara StatelessWidget dan StatefulWidget! Kapan kita sebaiknya memilih StatelessWidget dan kapan harus menggunakan StatefulWidget?**
-
-   `StatelessWidget` cocok ketika tampilan dapat ditentukan dari konfigurasi widget dan data yang tersedia dari konteks. Widget ini tetap bisa dibangun ulang ketika input atau dependensinya berubah. `StatefulWidget` memiliki objek `State` terpisah yang dapat menyimpan nilai yang berubah selama widget terpasang. Pemanggilan `setState` menjadwalkan build ulang untuk menerapkan perubahan tersebut. Di proyek ini, `MyHomePage` memakai `StatelessWidget` karena data profil dan menu sudah ditentukan, sementara penayangan pesan dikelola oleh `ScaffoldMessenger`. Contoh penggunaan `StatefulWidget` adalah halaman daftar yang menyimpan filter pilihan pengguna.
-
-5. **Apa itu BuildContext dan mengapa penting di Flutter? Bagaimana penggunaannya di dalam metode build?**
-
-   `BuildContext` menunjukkan posisi widget dalam pohon widget. Flutter memberikannya ke `build(BuildContext context)` agar widget bisa mengakses informasi dan layanan yang tersedia dari leluhurnya. Dalam proyek ini, `Theme.of(context)` mengambil warna tema, `MediaQuery.of(context)` membaca lebar area tampilan untuk menentukan lebar kartu profil, dan `ScaffoldMessenger.of(context)` dipakai saat kartu aksi ditekan untuk menutup pesan sebelumnya dan menampilkan pesan baru.
-
-6. **Jelaskan konsep hot reload di Flutter dan apa perbedaannya dengan hot restart! Kapan kita tidak bisa hanya mengandalkan hot reload dan harus melakukan hot restart atau full restart?**
-
-   Hot reload memuat perubahan kode Dart dan membangun ulang tampilan sambil mempertahankan state. Ini cocok untuk perubahan tampilan seperti teks atau padding. Hot restart memulai ulang aplikasi Dart dari `main()` dan mereset state. Gunakan hot restart ketika perubahan perlu menjalankan ulang kode di `main()` atau `initState()`. Untuk perubahan pada kode native seperti Kotlin atau Swift, lakukan full restart dengan menghentikan aplikasi dan menjalankannya kembali agar bagian native ikut dibangun ulang.
-
-Referensi teknis — [BuildContext](https://api.flutter.dev/flutter/widgets/BuildContext-class.html) dan [Hot reload](https://docs.flutter.dev/tools/hot-reload).
+   `GlobalKey<FormState>` memberi tombol **Simpan** akses ke status form. Saat tombol ditekan, `validate()` menjalankan `validator` pada kolom yang memilikinya. Jika ada nilai yang tidak valid, pesan muncul di kolom terkait dan dialog baru dapat dibuka setelah semua isian lolos. Misalnya, tahun selesai `2023` ditolak jika tahun masuk `2024`. Papan ketik numerik memudahkan mengetik angka, tetapi pemeriksaan urutan tahun dan nilai yang ditempel tetap memerlukan validasi.
 
 ---
 
 ## 🤖 AI Disclosure
 
-Pada pengerjaan Tutorial 08 dan Tugas 7, saya menggunakan ChatGPT sebagai alat bantu untuk memahami instruksi, mencocokkan kode dengan checklist tugas, dan meninjau masalah tampilan pada aplikasi Flutter. Saya juga menggunakannya untuk mendapat contoh kode dan bantuan menyusun README serta draf jawaban reflektif. Saya menerapkan perubahan pada aplikasi, mengecek hasilnya di Chrome, serta melakukan commit dan push sendiri.
+Pada pengerjaan Tutorial 09 dan Tugas 8, saya menggunakan ChatGPT sebagai alat bantu untuk memahami instruksi, mencocokkan kode dengan checklist tugas, dan meninjau masalah tampilan pada aplikasi Flutter. Saya juga menggunakannya untuk mendapat contoh kode dan bantuan menyusun README serta draf jawaban reflektif. Saya menerapkan perubahan pada aplikasi, mengecek hasilnya di Chrome, serta melakukan commit dan push sendiri.
 
 ### Strategi prompting dan ringkasan interaksi
 
 Saya memberi ChatGPT konteks berupa PDF tugas, kode Flutter yang sedang saya kerjakan, dan tangkapan layar saat ada masalah tampilan. Saya memulai dengan meminta pemeriksaan berdasarkan checklist. Setelah itu, saya mempersempit pertanyaan ke bagian yang perlu dikerjakan dan meminta petunjuk yang menyebutkan file, blok kode, serta langkah pengecekannya.
-
-Beberapa prompt yang saya gunakan, diringkas dari percakapan:
-- “Cocokkan kode Flutter saya dengan checklist Tugas 7. Tunjukkan poin yang sudah terpenuhi dan yang masih perlu saya kerjakan dengan istilah yang sama seperti di PDF.”
-- “Periksa tangkapan layar aplikasi di Chrome. Jelaskan penyebab bottom overflow dan tunjukkan blok layout yang perlu saya ubah agar ketiga kartu tampil utuh.”
-- “Bantu saya membagi pekerjaan menjadi beberapa tahap yang punya hasil jelas. Sarankan pesan commit untuk tiap tahap dan periksa perubahan sebelum saya commit.”
 
 Saya memakai jawaban ChatGPT sebagai panduan saat mengerjakan perubahan. Setelah menerapkannya, saya kembali dengan hasil pengecekan atau tangkapan layar untuk memastikan perbaikannya sesuai sebelum melanjutkan ke tahap berikutnya.
 
