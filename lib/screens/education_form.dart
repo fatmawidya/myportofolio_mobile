@@ -1,4 +1,7 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:myportofolio_mobile/validators/education_validators.dart';
+import 'package:myportofolio_mobile/widgets/education_preview_card.dart';
+import 'package:myportofolio_mobile/widgets/left_drawer.dart';
 
 class EducationFormPage extends StatefulWidget {
   const EducationFormPage({super.key});
@@ -15,6 +18,15 @@ class _EducationFormPageState extends State<EducationFormPage> {
   final _endYearController = TextEditingController();
   final _thumbnailController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _degree = ValueNotifier('bachelor');
+
+  late final _previewChanges = Listenable.merge([
+    _institutionController,
+    _degree,
+    _fieldOfStudyController,
+    _startYearController,
+    _endYearController,
+  ]);
 
   static const _degreeOptions = {
     'elementary': 'Elementary School',
@@ -25,7 +37,10 @@ class _EducationFormPageState extends State<EducationFormPage> {
     'doctoral': 'Doctoral Degree',
   };
 
-  String _degree = 'bachelor';
+  static final _htmlTags = RegExp(r'<!--[\s\S]*?-->|</?[a-zA-Z][^>]*>');
+
+  String _plainText(String? value) =>
+      (value ?? '').replaceAll(_htmlTags, '').trim();
 
   @override
   void dispose() {
@@ -35,6 +50,7 @@ class _EducationFormPageState extends State<EducationFormPage> {
     _endYearController.dispose();
     _thumbnailController.dispose();
     _descriptionController.dispose();
+    _degree.dispose();
     super.dispose();
   }
 
@@ -43,6 +59,7 @@ class _EducationFormPageState extends State<EducationFormPage> {
       return;
     }
 
+    FocusScope.of(context).unfocus();
     final endYear = _endYearController.text.trim();
     final logoUrl = _thumbnailController.text.trim();
 
@@ -56,15 +73,15 @@ class _EducationFormPageState extends State<EducationFormPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Institusi: ${_institutionController.text.trim()}'),
-                Text('Jenjang: ${_degreeOptions[_degree]}'),
-                Text('Jurusan: ${_fieldOfStudyController.text.trim()}'),
+                Text('Institusi: ${_plainText(_institutionController.text)}'),
+                Text('Jenjang: ${_degreeOptions[_degree.value]}'),
+                Text('Jurusan: ${_plainText(_fieldOfStudyController.text)}'),
                 Text('Tahun Masuk: ${_startYearController.text.trim()}'),
                 Text(
                   'Tahun Selesai: ${endYear.isEmpty ? 'Belum selesai' : endYear}',
                 ),
                 Text('URL Logo: ${logoUrl.isEmpty ? 'Tidak diisi' : logoUrl}'),
-                Text('Deskripsi: ${_descriptionController.text.trim()}'),
+                Text('Deskripsi: ${_plainText(_descriptionController.text)}'),
               ],
             ),
           ),
@@ -87,6 +104,7 @@ class _EducationFormPageState extends State<EducationFormPage> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
+      drawer: const LeftDrawer(),
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -102,7 +120,7 @@ class _EducationFormPageState extends State<EducationFormPage> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
+                  if (_plainText(value).isEmpty) {
                     return 'Nama institusi tidak boleh kosong!';
                   }
                   return null;
@@ -110,7 +128,7 @@ class _EducationFormPageState extends State<EducationFormPage> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                initialValue: _degree,
+                initialValue: _degree.value,
                 isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Jenjang Pendidikan',
@@ -124,9 +142,7 @@ class _EducationFormPageState extends State<EducationFormPage> {
                 }).toList(),
                 onChanged: (value) {
                   if (value != null) {
-                    setState(() {
-                      _degree = value;
-                    });
+                    _degree.value = value;
                   }
                 },
               ),
@@ -139,7 +155,7 @@ class _EducationFormPageState extends State<EducationFormPage> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
+                  if (_plainText(value).isEmpty) {
                     return 'Jurusan atau bidang studi tidak boleh kosong!';
                   }
                   return null;
@@ -153,18 +169,7 @@ class _EducationFormPageState extends State<EducationFormPage> {
                   labelText: 'Tahun Masuk',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  final input = value?.trim() ?? '';
-                  if (input.isEmpty) {
-                    return 'Tahun masuk wajib diisi.';
-                  }
-
-                  final year = int.tryParse(input, radix: 10);
-                  if (year == null || year < 1 || year > 9999) {
-                    return 'Masukkan tahun antara 1 dan 9999.';
-                  }
-                  return null;
-                },
+                validator: validateEducationStartYear,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -174,52 +179,33 @@ class _EducationFormPageState extends State<EducationFormPage> {
                   labelText: 'Tahun Selesai (opsional)',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  final input = value?.trim() ?? '';
-                  if (input.isEmpty) {
-                    return null;
-                  }
-
-                  final endYear = int.tryParse(input, radix: 10);
-                  if (endYear == null || endYear < 1 || endYear > 9999) {
-                    return 'Masukkan tahun antara 1 dan 9999.';
-                  }
-
-                  final startYear = int.tryParse(
-                    _startYearController.text.trim(),
-                    radix: 10,
-                  );
-                  if (startYear != null && endYear < startYear) {
-                    return 'Tahun selesai tidak boleh sebelum tahun masuk.';
-                  }
-                  return null;
-                },
+                validator: (value) => validateEducationEndYear(
+                  value,
+                  startYear: _startYearController.text,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListenableBuilder(
+                listenable: _previewChanges,
+                builder: (context, child) => EducationPreviewCard(
+                  institution: _plainText(_institutionController.text),
+                  degree: _degreeOptions[_degree.value]!,
+                  fieldOfStudy: _plainText(_fieldOfStudyController.text),
+                  startYear: _startYearController.text.trim(),
+                  endYear: _endYearController.text.trim(),
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _thumbnailController,
                 keyboardType: TextInputType.url,
-                maxLength: 200,
+                maxLength: educationLogoUrlMaxLength,
                 decoration: const InputDecoration(
                   labelText: 'URL Logo (opsional)',
                   hintText: 'https://example.com/logo.png',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  final input = value?.trim() ?? '';
-                  if (input.isEmpty) {
-                    return null;
-                  }
-
-                  final uri = Uri.tryParse(input);
-                  if (uri == null ||
-                      (uri.scheme != 'http' && uri.scheme != 'https') ||
-                      uri.host.isEmpty ||
-                      RegExp(r'\s').hasMatch(input)) {
-                    return 'Masukkan URL logo yang valid (HTTP atau HTTPS).';
-                  }
-                  return null;
-                },
+                validator: validateEducationLogoUrl,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -230,10 +216,7 @@ class _EducationFormPageState extends State<EducationFormPage> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  final text = (value ?? '')
-                      .replaceAll(RegExp(r'<[^>]+>'), '')
-                      .trim();
-                  if (text.isEmpty) {
+                  if (_plainText(value).isEmpty) {
                     return 'Deskripsi wajib diisi.';
                   }
                   return null;
