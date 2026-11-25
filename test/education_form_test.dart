@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/main.dart';
+import 'package:myportofolio_mobile/services/api_client.dart';
 import 'package:myportofolio_mobile/screens/education_form.dart';
 import 'package:myportofolio_mobile/widgets/education_preview_card.dart';
 
@@ -13,10 +14,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
 
-    await tester.pumpWidget(const MyApp());
-    await tester.tap(find.text('Lihat Proyek'));
-    await tester.pumpAndSettle();
-    expect(find.byType(SnackBar), findsOneWidget);
+    await tester.pumpWidget(MyApp(apiClient: ApiClient()));
 
     final educationCard = find.text('Tambah Edukasi');
     await tester.ensureVisible(educationCard);
@@ -137,7 +135,7 @@ void main() {
     tester.platformDispatcher.textScaleFactorTestValue = 0.7;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(MyApp(apiClient: ApiClient()));
     await tester.tap(find.byIcon(Icons.menu));
     await tester.pumpAndSettle();
     expect(find.text('Add Project'), findsOneWidget);

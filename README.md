@@ -1,6 +1,6 @@
 # MY PORTFOLIO MOBILE — Fatma Widya Rachma
 
-Aplikasi portofolio pribadi berbasis Flutter untuk Pemrograman Berbasis Platform. Tugas 7 membangun halaman profil dan menu aksi. Tutorial 9 menambahkan navigasi dan formulir proyek. Tugas 8 menerapkan pola yang sama pada formulir Edukasi.
+Aplikasi portofolio pribadi berbasis Flutter untuk Pemrograman Berbasis Platform. Tutorial 10 menghubungkan fitur Proyek ke Django REST Framework, menambahkan autentikasi token, dan menyiapkan CI/CD melalui GitHub Actions. Halaman profil serta formulir Edukasi dari tugas sebelumnya tetap tersedia.
 
 ---
 
@@ -21,18 +21,35 @@ Halaman `MyPortfolio` menampilkan tiga `InfoCard` berlabel **NPM**, **Name**, da
 
 ### 2. Menu Aksi dan Drawer
 
-Empat kartu aksi disusun dalam grid dua kolom pada layar sempit dan tiga kolom pada layar yang lebih lebar. Kartu **Tambah Edukasi** langsung membuka formulir. Kartu lain menampilkan `SnackBar` dengan nama aksi.
+Empat kartu aksi disusun dalam grid dua kolom pada layar sempit dan tiga kolom pada layar yang lebih lebar.
 
 | Menu | Perilaku |
 | --- | --- |
-| Lihat Proyek | Menampilkan umpan balik melalui `SnackBar`. |
-| Tambah Proyek | Membuka formulir proyek dari Tutorial 9. |
+| Lihat Proyek | Mengambil daftar proyek dari Django tanpa perlu login; setiap proyek dapat dibuka untuk melihat detailnya. |
+| Tambah Proyek | Meminta login jika belum terautentikasi, lalu membuka formulir yang mengirim proyek ke Django. |
 | Tambah Edukasi | Membuka formulir Edukasi dari Tugas 8. |
-| Logout | Menampilkan umpan balik melalui `SnackBar`. |
+| Logout | Memanggil endpoint logout, menghapus token lokal, dan menampilkan status melalui `SnackBar`. Jika belum login, menampilkan pemberitahuan. |
 
-Drawer yang sama digunakan di halaman utama dan kedua formulir. Drawer menyediakan pilihan **Home**, **Add Project**, dan **Add Education**.
+Drawer yang sama digunakan di halaman utama, daftar proyek, dan kedua formulir. Pilihannya adalah **Home**, **Add Project**, **Add Education**, **Projects**, serta **Login** atau **Logout** sesuai status autentikasi. Akses **Add Project** dari drawer juga dilindungi pemeriksaan login.
 
-### 3. Formulir Tambah Edukasi
+### 3. Integrasi Proyek dan Autentikasi — Tutorial 10
+
+`Project` menggunakan `@JsonSerializable(fieldRename: FieldRename.snake)` untuk memetakan data Dart ke JSON API. Atribut `id` berasal dari server dan tidak dikirim pada POST. `project_image_url` boleh kosong atau bernilai `null` pada respons dan dibaca sebagai string kosong.
+
+`ApiClient` menangani permintaan HTTP, sedangkan `AuthState` menyimpan token di memori dan memberi tahu UI ketika status login berubah. Keduanya disediakan melalui `MultiProvider`. Token tidak disimpan permanen, sehingga aplikasi yang dimulai ulang perlu login kembali.
+
+| Metode | Endpoint | Akses dan fungsi |
+| --- | --- | --- |
+| GET | `/api/v1/projects/` | Publik; mengambil daftar proyek. |
+| POST | `/api/v1/projects/` | Token milik superuser; membuat proyek. |
+| POST | `/api/v1/auth/token/` | Menukar username dan password dengan token. |
+| POST | `/api/v1/auth/logout/` | Mencabut token aktif; respons berhasil berupa HTTP 204. |
+
+Daftar proyek menggunakan `FutureBuilder`, indikator loading, pesan daftar kosong, tombol **Retry** ketika gagal, dan pull-to-refresh. Halaman detail menampilkan judul, deskripsi, teknologi, URL proyek, serta gambar jika URL gambarnya tersedia.
+
+Form proyek menyediakan **Title**, **Description**, **Tech Stack**, **Project URL**, dan **Project Image URL (Optional)**. Isian wajib dan format URL diperiksa sebelum POST dengan header `Authorization: Token <key>`. Respons berhasil ditampilkan dalam dialog, kemudian form dikosongkan setelah dialog ditutup. Jika server mengembalikan HTTP 401, sesi lokal dihapus dan pengguna diminta login ulang; isian dipertahankan agar dapat dikirim lagi dengan tombol **Save**.
+
+### 4. Formulir Tambah Edukasi — Tugas 8
 
 Formulir mengikuti model Edukasi di portofolio Django. Pengguna dapat mengisi nama institusi, jenjang, jurusan, tahun masuk, tahun selesai, URL logo, dan deskripsi. Tahun selesai dan URL logo bersifat opsional. Jika diisi, tahun selesai harus sama dengan atau setelah tahun masuk, dan URL logo harus memakai HTTP atau HTTPS.
 
@@ -46,20 +63,33 @@ Kartu **Pratinjau Edukasi** diperbarui saat pengguna mengubah institusi, jenjang
 
 ```text
 myportofolio_mobile/
+├── .github/workflows/main.yaml # CI dan build APK release
 ├── lib/
-│   ├── main.dart                  # Titik masuk, MaterialApp, dan tema
+│   ├── main.dart                  # MultiProvider, MaterialApp, dan tema
+│   ├── config.dart                # API_BASE_URL melalui --dart-define
+│   ├── models/
+│   │   └── project.dart           # Model JSON; project.g.dart dihasilkan otomatis
 │   ├── screens/
 │   │   ├── menu.dart              # Halaman utama, kartu profil, dan data menu
-│   │   ├── project_form.dart      # Formulir Tambah Proyek
+│   │   ├── login_screen.dart      # Login username dan password
+│   │   ├── project_list_screen.dart   # GET proyek, refresh, dan status pemuatan
+│   │   ├── project_detail_screen.dart # Detail proyek dan gambar opsional
+│   │   ├── project_form.dart      # Validasi dan POST proyek dengan token
 │   │   └── education_form.dart    # Formulir Tambah Edukasi
+│   ├── services/
+│   │   ├── api_client.dart        # Permintaan HTTP ke Django
+│   │   └── auth_state.dart        # Token di memori dan perubahan status login
 │   ├── validators/
 │   │   └── education_validators.dart # Validasi tahun dan URL logo
 │   └── widgets/
+│       ├── auth_guard.dart        # Meminta login sebelum membuka fitur terlindungi
 │       ├── education_preview_card.dart # Tampilan pratinjau Edukasi
 │       ├── left_drawer.dart       # Drawer yang dipakai bersama
 │       └── project_card.dart      # Kartu aksi dan navigasi dari halaman utama
 ├── test/
-│   └── widget_test.dart           # Tes navigasi dan formulir Tambah Proyek
+│   ├── widget_test.dart           # Model JSON, autentikasi, dan alur Proyek
+│   ├── education_form_test.dart   # Formulir, pratinjau, dan navigasi Edukasi
+│   └── education_validators_test.dart # Validasi tahun dan URL Edukasi
 ├── android/                   # Konfigurasi target Android
 ├── ios/                       # Konfigurasi target iOS
 ├── web/                       # Konfigurasi target web
@@ -78,7 +108,7 @@ myportofolio_mobile/
 
 ### 1. Siapkan Flutter SDK dan Chrome
 
-Pastikan Flutter tersedia di `PATH` dan versi Dart bawaan Flutter memenuhi batas `sdk: ^3.13.7` di `pubspec.yaml`. Gunakan Google Chrome sebagai target web.
+Gunakan Flutter **3.47.9** dengan Dart **3.13.7**, sesuai versi CI, dan pastikan Flutter tersedia di `PATH`. Gunakan Google Chrome sebagai target web.
 
 ```bash
 flutter --version
@@ -94,32 +124,108 @@ cd myportofolio_mobile
 
 Kalau repositori sudah ada di komputer, buka terminal di folder yang berisi `pubspec.yaml`.
 
-### 3. Pasang dependensi
+### 3. Pasang dependensi dan hasilkan model JSON
 
 ```bash
 flutter pub get
+dart run build_runner build
 ```
 
-Aplikasi memakai data profil lokal di `lib/screens/menu.dart`. Formulir menampilkan ringkasan isian di aplikasi, sehingga penyiapan Flutter dan Chrome sudah cukup untuk mencobanya.
+Jalankan kembali `build_runner` setelah mengubah `lib/models/project.dart`. Berkas `*.g.dart` diabaikan oleh Git dan dihasilkan ulang pada CI.
 
-### 4. Jalankan aplikasi di Chrome
+### 4. Siapkan backend Django
+
+Gunakan repositori Django portofolio yang terpisah. Di direktori yang berisi `manage.py`, aktifkan virtual environment, lalu jalankan:
+
+```bash
+python -m pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+Backend Tutorial 10 harus memiliki konfigurasi berikut:
+
+- `corsheaders` dan `rest_framework.authtoken` terdaftar di `INSTALLED_APPS`, serta dependensi `django-cors-headers` terpasang.
+- `CorsMiddleware` berada sebelum `CommonMiddleware`.
+- `TokenAuthentication` berada sebelum `SessionAuthentication`; endpoint proyek menggunakan konfigurasi tersebut.
+- `ALLOWED_HOSTS` mencakup `localhost`, `127.0.0.1`, `10.0.2.2`, dan domain deploy jika digunakan.
+- Untuk Chrome lokal, jalankan backend dengan `PRODUCTION=False` agar konfigurasi CORS lokal berlaku. Untuk Flutter Web yang di-deploy, isi `CORS_ALLOWED_ORIGINS` dengan origin web yang diizinkan.
+- Endpoint pada tabel API di atas tersedia, dan migrasi `authtoken` sudah dijalankan.
+
+Gunakan akun **superuser Django** untuk menambah proyek. Jika belum memiliki akun tersebut, jalankan `python manage.py createsuperuser` di repositori Django.
+
+### 5. Jalankan aplikasi sesuai perangkat
+
+Biarkan backend berjalan di terminal pertama. Gunakan terminal kedua di direktori Flutter.
+
+**Chrome dengan backend lokal:**
 
 ```bash
 flutter devices
-flutter run -d chrome
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000
 ```
 
-Pastikan Chrome muncul dalam daftar perangkat. Setelah aplikasi terbuka, gunakan langkah pengujian di bawah untuk mencoba formulir Edukasi. Tekan `q` di terminal untuk menghentikan aplikasi.
-
-Untuk menjalankan di Android, siapkan Android SDK dan nyalakan emulator atau sambungkan perangkat fisik dengan USB debugging. Ambil ID perangkat dari `flutter devices`, lalu jalankan `flutter run -d ID_PERANGKAT` dengan mengganti `ID_PERANGKAT` sesuai daftar.
-
-### 5. Jalankan analisis kode
+**Emulator Android dengan backend lokal:**
 
 ```bash
-flutter analyze
+flutter run -d ID_EMULATOR
 ```
 
-Hasil yang diharapkan adalah `No issues found!`.
+Ganti `ID_EMULATOR` dengan ID dari `flutter devices`. Nilai bawaan `API_BASE_URL` adalah `http://10.0.2.2:8000`, yaitu alamat komputer host dari emulator Android.
+
+**Android fisik melalui USB debugging:**
+
+```bash
+adb reverse tcp:8000 tcp:8000
+flutter run -d ID_PERANGKAT --dart-define=API_BASE_URL=http://localhost:8000
+```
+
+Ganti `ID_PERANGKAT` dengan ID perangkat dari `flutter devices`.
+
+**Menggunakan backend deploy:**
+
+```bash
+flutter run --dart-define=API_BASE_URL=https://fatma-widya-myportofolio.pws.cs.ui.ac.id
+```
+
+Backend deploy perlu memuat perubahan Tutorial 10. Isi URL dasar tanpa garis miring `/` di akhir. Tekan `q` di terminal untuk menghentikan aplikasi.
+
+### 6. Jalankan pemeriksaan lokal
+
+```bash
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+```
+
+Pastikan format tidak perlu diubah, analisis menampilkan `No issues found!`, dan seluruh tes lulus. Tes HTTP memakai `MockClient`, sehingga tidak memerlukan backend aktif; koneksi ke Django diuji melalui langkah manual berikut.
+
+### Pengujian Proyek dan Login — Tutorial 10
+
+1. Jalankan Django dan Flutter dengan URL yang sesuai. Buka **Lihat Proyek** saat belum login; cocokkan daftar dengan data Django, buka detail, lalu coba refresh. Gambar hanya ditampilkan jika URL-nya tersedia.
+2. Saat belum login, buka **Tambah Proyek** melalui kartu maupun **Add Project** di drawer. Pastikan layar login muncul. Coba isian kosong dan kredensial salah; form proyek hanya terbuka setelah login berhasil.
+3. Isi form proyek dengan akun superuser. Coba URL yang tidak valid, lalu lengkapi isian dengan benar. Tekan **Save**, cocokkan ringkasan, tutup dialog, dan pastikan form dikosongkan. Buka daftar proyek lagi untuk memeriksa data yang tersimpan di Django.
+4. Tekan **Logout**. Pastikan opsi drawer kembali menjadi **Login**, daftar proyek tetap dapat dibuka, dan menambah proyek kembali meminta login.
+5. Untuk menguji token kedaluwarsa, login lalu cabut token tersebut melalui Django admin di lingkungan lokal. Kirim form; pastikan aplikasi meminta login ulang dan mempertahankan isian. Setelah login, tekan **Save** lagi.
+
+### CI/CD dan APK — Tutorial 10
+
+Workflow `.github/workflows/main.yaml` memakai Flutter **3.47.9** pada kedua job dan berjalan saat push ke `main` dan pada pull request:
+
+- Job `build` memakai `very_good_workflows` untuk menghasilkan model JSON, memeriksa format dan analisis, serta menjalankan tes dengan batas cakupan minimum `0` sesuai tutorial.
+- Job `build_apk` berjalan setelah `build` berhasil, menghasilkan APK release, dan mengunggah artefak **app-release-apk**.
+
+Untuk APK yang terhubung ke backend deploy, buka **Settings → Secrets and variables → Actions → Variables** pada repositori GitHub. Tambahkan repository variable **API_BASE_URL** dengan URL backend tanpa `/` di akhir, misalnya `https://fatma-widya-myportofolio.pws.cs.ui.ac.id`. Workflow memakai nilai tersebut saat build. Jika variabel kosong atau belum diatur, APK memakai `https://fatma-widya-myportofolio.pws.cs.ui.ac.id`.
+
+Build APK secara lokal dengan backend deploy:
+
+```bash
+flutter build apk --release --dart-define=API_BASE_URL=https://fatma-widya-myportofolio.pws.cs.ui.ac.id
+```
+
+Hasil lokal berada di `build/app/outputs/flutter-apk/app-release.apk`.
+
+Setelah pemeriksaan lokal selesai, commit dan push perubahan Tutorial 10. Di tab **Actions**, pastikan kedua job hijau dan artefak APK tersedia. Kumpulkan tautan commit GitHub melalui slot Tutorial 10 di SCELE.
 
 ### Pengujian Formulir Edukasi
 
