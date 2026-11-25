@@ -61,6 +61,7 @@ class ItemCard extends StatelessWidget {
           }
           if (item.name == "Tambah Edukasi") {
             messenger.removeCurrentSnackBar();
+            if (!await ensureLoggedIn(context) || !context.mounted) return;
             Navigator.push(
               context,
               MaterialPageRoute(

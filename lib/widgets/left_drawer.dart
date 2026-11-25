@@ -67,7 +67,8 @@ class LeftDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.school_outlined),
             title: const Text('Add Education'),
-            onTap: () {
+            onTap: () async {
+              if (!await ensureLoggedIn(context) || !context.mounted) return;
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(

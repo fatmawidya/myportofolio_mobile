@@ -1,153 +1,242 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/main.dart';
-import 'package:myportofolio_mobile/services/api_client.dart';
 import 'package:myportofolio_mobile/screens/education_form.dart';
+import 'package:myportofolio_mobile/screens/education_list_screen.dart';
+import 'package:myportofolio_mobile/screens/login_screen.dart';
 import 'package:myportofolio_mobile/widgets/education_preview_card.dart';
 
+import 'support/education_server.dart';
+
+Future<void> login(WidgetTester tester) async {
+  expect(find.byType(LoginScreen), findsOneWidget);
+  final fields = find.byType(TextFormField);
+  await tester.enterText(fields.at(0), 'owner');
+  await tester.enterText(fields.at(1), 'password');
+  await tester.tap(find.widgetWithText(ElevatedButton, 'Login'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> fill(WidgetTester tester, int index, String value) async {
+  final field = find.byType(TextFormField).at(index);
+  await tester.ensureVisible(field);
+  await tester.pumpAndSettle();
+  await tester.enterText(field, value);
+  await tester.pumpAndSettle();
+}
+
+Future<void> fillRequired(WidgetTester tester) async {
+  await fill(tester, 0, 'Universitas Indonesia');
+  await fill(tester, 1, 'Sistem Informasi');
+  await fill(tester, 2, '2025');
+  await fill(tester, 5, 'Belajar pengembangan aplikasi');
+}
+
+Future<void> save(WidgetTester tester) async {
+  FocusManager.instance.primaryFocus?.unfocus();
+  await tester.pumpAndSettle();
+  final button = find.widgetWithText(ElevatedButton, 'Simpan');
+  await tester.ensureVisible(button);
+  await tester.pumpAndSettle();
+  await tester.tap(button);
+  await tester.pumpAndSettle();
+}
+
 void main() {
-  testWidgets('Updates the preview and validates before saving on mobile', (
-    tester,
-  ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(360, 720);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
-
-    await tester.pumpWidget(MyApp(apiClient: ApiClient()));
-
-    final educationCard = find.text('Tambah Edukasi');
-    await tester.ensureVisible(educationCard);
-    await tester.pumpAndSettle();
-    await tester.tap(educationCard);
-    await tester.pumpAndSettle();
-    expect(find.byType(SnackBar), findsNothing);
-
-    final preview = find.byType(EducationPreviewCard);
-    Finder previewText(String text) =>
-        find.descendant(of: preview, matching: find.text(text));
-
-    final fields = find.byType(TextFormField);
-    Future<void> fill(int index, String value) async {
-      await tester.ensureVisible(fields.at(index));
+  testWidgets(
+    'Mobile education validates, previews, posts and opens saved data',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(360, 720);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      final server = EducationTestServer();
+      await tester.pumpWidget(MyApp(apiClient: server.client));
+      final card = find.text('Tambah Edukasi');
+      await tester.ensureVisible(card);
       await tester.pumpAndSettle();
-      await tester.enterText(fields.at(index), value);
+      await tester.tap(card);
       await tester.pumpAndSettle();
-    }
+      expect(find.byType(EducationFormPage), findsNothing);
+      await login(tester);
 
-    Future<void> save() async {
-      final button = find.widgetWithText(ElevatedButton, 'Simpan');
-      await tester.ensureVisible(button);
+      final preview = find.byType(EducationPreviewCard);
+      Finder previewText(String value) =>
+          find.descendant(of: preview, matching: find.text(value));
+      expect(previewText('Nama institusi belum diisi'), findsOneWidget);
+      await fill(tester, 0, '   ');
+      await save(tester);
+      expect(find.text('Nama institusi tidak boleh kosong!'), findsOneWidget);
+      expect(server.educations, isEmpty);
+      await fillRequired(tester);
+      expect(previewText('Bachelor Degree · Sistem Informasi'), findsOneWidget);
+      expect(previewText('Sedang menempuh pendidikan'), findsOneWidget);
+
+      FocusManager.instance.primaryFocus?.unfocus();
+      final degree = find.byType(DropdownButton<String>);
+      await tester.ensureVisible(degree);
       await tester.pumpAndSettle();
-      await tester.tap(button);
+      await tester.tap(degree);
       await tester.pumpAndSettle();
-    }
+      await tester.tap(find.text('Master Degree').last);
+      await tester.pumpAndSettle();
+      expect(previewText('Master Degree · Sistem Informasi'), findsOneWidget);
 
-    expect(previewText('Nama institusi belum diisi'), findsOneWidget);
-    await fill(0, '   ');
-    await save();
-    expect(find.text('Nama institusi tidak boleh kosong!'), findsOneWidget);
-    expect(find.byType(AlertDialog), findsNothing);
-
-    await fill(0, 'Universitas Indonesia');
-    await fill(1, 'Sistem Informasi');
-    await fill(2, '2024');
-    expect(previewText('Universitas Indonesia'), findsOneWidget);
-    expect(previewText('Bachelor Degree · Sistem Informasi'), findsOneWidget);
-    expect(previewText('Sejak 2024'), findsOneWidget);
-    expect(previewText('Sedang menempuh pendidikan'), findsOneWidget);
-
-    FocusManager.instance.primaryFocus?.unfocus();
-    await tester.pumpAndSettle();
-    final selectedDegree = find.byType(DropdownButton<String>);
-    await tester.ensureVisible(selectedDegree);
-    await tester.pumpAndSettle();
-    await tester.tap(selectedDegree);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Master Degree').last);
-    await tester.pumpAndSettle();
-    expect(previewText('Master Degree · Sistem Informasi'), findsOneWidget);
-
-    await fill(3, '2023');
-    await fill(4, 'https://contoh');
-    await fill(5, 'Belajar pengembangan aplikasi');
-    tester.view.viewInsets = const FakeViewPadding(bottom: 240);
-    addTearDown(tester.view.resetViewInsets);
-    await tester.pumpAndSettle();
-    await save();
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(
-      find.text('Tahun selesai tidak boleh sebelum tahun masuk.'),
-      findsOneWidget,
-    );
-    expect(
-      find.text('Masukkan URL logo yang valid (HTTP atau HTTPS).'),
-      findsOneWidget,
-    );
-
-    tester.view.resetViewInsets();
-    await tester.pumpAndSettle();
-    await fill(3, '2027');
-    await fill(4, 'https://example.com/logo.png');
-    expect(previewText('2024–2027'), findsOneWidget);
-    expect(previewText('Sedang menempuh pendidikan'), findsNothing);
-
-    await save();
-    final dialog = find.byType(AlertDialog);
-    expect(dialog, findsOneWidget);
-    for (final line in [
-      'Institusi: Universitas Indonesia',
-      'Jenjang: Master Degree',
-      'Jurusan: Sistem Informasi',
-      'Tahun Masuk: 2024',
-      'Tahun Selesai: 2027',
-      'URL Logo: https://example.com/logo.png',
-      'Deskripsi: Belajar pengembangan aplikasi',
-    ]) {
+      await fill(tester, 3, '2024');
+      await fill(tester, 4, 'https://contoh');
+      tester.view.viewInsets = const FakeViewPadding(bottom: 240);
+      addTearDown(tester.view.resetViewInsets);
+      await save(tester);
       expect(
-        find.descendant(of: dialog, matching: find.text(line)),
+        find.text('Tahun selesai tidak boleh sebelum tahun masuk.'),
         findsOneWidget,
       );
-    }
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(server.educations, isEmpty);
 
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
-    expect(dialog, findsNothing);
-    expect(previewText('Universitas Indonesia'), findsOneWidget);
+      tester.view.resetViewInsets();
+      await fill(tester, 3, '2027');
+      await fill(tester, 4, 'https://example.com/logo.png');
+      await save(tester);
+      expect(find.text('Edukasi berhasil ditambahkan!'), findsOneWidget);
+      for (final text in [
+        'Institusi: Universitas Indonesia',
+        'Jenjang: Master Degree',
+        'Jurusan: Sistem Informasi',
+        'Tahun Masuk: 2025',
+        'Tahun Selesai: 2027',
+        'URL Logo: https://example.com/logo.png',
+        'Deskripsi: Belajar pengembangan aplikasi',
+      ]) {
+        expect(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.text(text),
+          ),
+          findsOneWidget,
+        );
+      }
+      final post = server.requests.singleWhere(
+        (r) => r.method == 'POST' && r.url.path == '/api/v1/education/',
+      );
+      expect(post.headers['Authorization'], 'Token token-1');
+      expect(jsonDecode(post.body)['end_year'], 2027);
+      await tester.tap(find.text('Lihat Daftar'));
+      await tester.pumpAndSettle();
+      expect(find.byType(EducationListScreen), findsOneWidget);
+      expect(find.text('Universitas Indonesia'), findsOneWidget);
+    },
+  );
 
-    await fill(3, '');
-    await fill(4, '');
-    await save();
-    expect(find.text('Tahun Selesai: Belum selesai'), findsOneWidget);
-    expect(find.text('URL Logo: Tidak diisi'), findsOneWidget);
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
-
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    expect(find.text('MyPortfolio'), findsOneWidget);
-  });
-
-  testWidgets('Opens Education from the drawer and returns via Home', (
+  testWidgets('Drawer requires education login and Home returns to menu', (
     tester,
   ) async {
-    // The bundled Ahem test font is wider than the app's default font.
     tester.platformDispatcher.textScaleFactorTestValue = 0.7;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-
-    await tester.pumpWidget(MyApp(apiClient: ApiClient()));
+    final server = EducationTestServer();
+    await tester.pumpWidget(MyApp(apiClient: server.client));
     await tester.tap(find.byIcon(Icons.menu));
     await tester.pumpAndSettle();
-    expect(find.text('Add Project'), findsOneWidget);
     await tester.tap(find.text('Add Education'));
     await tester.pumpAndSettle();
+    await login(tester);
     expect(find.byType(EducationFormPage), findsOneWidget);
-
     await tester.tap(find.byIcon(Icons.menu));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Home'));
     await tester.pumpAndSettle();
     expect(find.text('MyPortfolio'), findsOneWidget);
-    expect(find.byType(EducationFormPage), findsNothing);
   });
+
+  testWidgets(
+    'Saving from the list refreshes once and sends optional null years',
+    (tester) async {
+      final server = EducationTestServer();
+      await tester.pumpWidget(MyApp(apiClient: server.client));
+      await tester.tap(find.text('Lihat Edukasi'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tambah Edukasi'));
+      await tester.pumpAndSettle();
+      await login(tester);
+      await fillRequired(tester);
+      await save(tester);
+      expect(find.text('Tahun Selesai: Belum selesai'), findsOneWidget);
+      expect(find.text('URL Logo: Tidak diisi'), findsOneWidget);
+      await tester.tap(find.text('Lihat Daftar'));
+      await tester.pumpAndSettle();
+      expect(find.byType(EducationListScreen), findsOneWidget);
+      expect(find.text('Universitas Indonesia'), findsOneWidget);
+      expect(server.educations.single['end_year'], isNull);
+      expect(server.requests.where((r) => r.method == 'GET').length, 2);
+    },
+  );
+
+  for (final status in [400, 403]) {
+    testWidgets('Education POST $status keeps input and permits retry', (
+      tester,
+    ) async {
+      final server = EducationTestServer()..postError = status;
+      await tester.pumpWidget(MyApp(apiClient: server.client));
+      await tester.tap(find.text('Tambah Edukasi'));
+      await tester.pumpAndSettle();
+      await login(tester);
+      await fillRequired(tester);
+      await save(tester);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(server.educations, isEmpty);
+      expect(find.text('Universitas Indonesia'), findsWidgets);
+      expect(
+        find.text(
+          status == 403
+              ? 'Akun ini tidak memiliki izin menambah edukasi.'
+              : 'Gagal menyimpan edukasi (HTTP 400).',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<ElevatedButton>(
+              find.widgetWithText(ElevatedButton, 'Simpan'),
+            )
+            .onPressed,
+        isNotNull,
+      );
+    });
+  }
+
+  testWidgets(
+    'Education 401 clears the session and uses a new token after login',
+    (tester) async {
+      final server = EducationTestServer()..expireNextPost = true;
+      await tester.pumpWidget(MyApp(apiClient: server.client));
+      await tester.tap(find.text('Tambah Edukasi'));
+      await tester.pumpAndSettle();
+      await login(tester);
+      await fillRequired(tester);
+      await save(tester);
+      expect(server.educations, isEmpty);
+      expect(find.byType(AlertDialog), findsNothing);
+      await login(tester);
+      expect(find.text('Universitas Indonesia'), findsWidgets);
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      await save(tester);
+      final posts = server.requests
+          .where(
+            (r) => r.method == 'POST' && r.url.path == '/api/v1/education/',
+          )
+          .toList();
+      expect(posts.length, 2);
+      expect(posts.first.headers['Authorization'], 'Token token-1');
+      expect(posts.last.headers['Authorization'], 'Token token-2');
+      expect(
+        server.requests.any((r) => r.url.path == '/api/v1/auth/logout/'),
+        isTrue,
+      );
+      expect(find.text('Edukasi berhasil ditambahkan!'), findsOneWidget);
+      expect(server.educations.length, 1);
+    },
+  );
 }

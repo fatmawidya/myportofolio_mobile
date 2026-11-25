@@ -1,10 +1,18 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:myportofolio_mobile/models/education.dart';
+import 'package:myportofolio_mobile/screens/education_list_screen.dart';
+import 'package:myportofolio_mobile/services/api_client.dart';
+import 'package:myportofolio_mobile/services/auth_state.dart';
 import 'package:myportofolio_mobile/validators/education_validators.dart';
+import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 import 'package:myportofolio_mobile/widgets/education_preview_card.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
+import 'package:provider/provider.dart';
 
 class EducationFormPage extends StatefulWidget {
-  const EducationFormPage({super.key});
+  const EducationFormPage({this.returnToList = false, super.key});
+
+  final bool returnToList;
 
   @override
   State<EducationFormPage> createState() => _EducationFormPageState();
@@ -19,6 +27,7 @@ class _EducationFormPageState extends State<EducationFormPage> {
   final _thumbnailController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _degree = ValueNotifier('bachelor');
+  bool _isSubmitting = false;
 
   late final _previewChanges = Listenable.merge([
     _institutionController,
@@ -28,14 +37,7 @@ class _EducationFormPageState extends State<EducationFormPage> {
     _endYearController,
   ]);
 
-  static const _degreeOptions = {
-    'elementary': 'Elementary School',
-    'junior_high': 'Junior High School',
-    'high_school': 'High School',
-    'bachelor': 'Bachelor Degree',
-    'master': 'Master Degree',
-    'doctoral': 'Doctoral Degree',
-  };
+  static const _degreeOptions = Education.degrees;
 
   static final _htmlTags = RegExp(r'<!--[\s\S]*?-->|</?[a-zA-Z][^>]*>');
 
@@ -54,41 +56,110 @@ class _EducationFormPageState extends State<EducationFormPage> {
     super.dispose();
   }
 
-  void _showSummary() {
-    if (!_formKey.currentState!.validate()) {
+  Future<void> _submit() async {
+    if (_isSubmitting || !_formKey.currentState!.validate()) {
       return;
     }
 
     FocusScope.of(context).unfocus();
-    final endYear = _endYearController.text.trim();
-    final logoUrl = _thumbnailController.text.trim();
+    setState(() => _isSubmitting = true);
+    try {
+      if (!await ensureLoggedIn(context) || !mounted) return;
+      final token = context.read<AuthState>().token;
+      if (token == null) return;
+      final education = Education(
+        institution: _plainText(_institutionController.text),
+        degree: _degree.value,
+        fieldOfStudy: _plainText(_fieldOfStudyController.text),
+        startYear: int.parse(_startYearController.text.trim()),
+        endYear: _endYearController.text.trim().isEmpty
+            ? null
+            : int.parse(_endYearController.text.trim()),
+        thumbnail: _thumbnailController.text.trim(),
+        description: _plainText(_descriptionController.text),
+      );
+      final created = await context.read<ApiClient>().createEducation(
+        education,
+        token: token,
+      );
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      await _showConfirmation(created);
+      if (!mounted) return;
+      if (widget.returnToList) {
+        Navigator.pop(context, true);
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const EducationListScreen()),
+        );
+      }
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      if (error.statusCode == 401) {
+        try {
+          await context.read<AuthState>().logout();
+        } catch (_) {
+          // AuthState clears the local session even if logout is unreachable.
+        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sesi berakhir. Silakan login kembali.'),
+          ),
+        );
+        await ensureLoggedIn(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.statusCode == 403
+                  ? 'Akun ini tidak memiliki izin menambah edukasi.'
+                  : 'Gagal menyimpan edukasi (HTTP ${error.statusCode}).',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tidak dapat menghubungi server. Coba lagi.'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
 
-    showDialog<void>(
+  Future<void> _showConfirmation(Education education) {
+    return showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Ringkasan Edukasi'),
+          title: const Text('Edukasi berhasil ditambahkan!'),
           content: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Institusi: ${_plainText(_institutionController.text)}'),
-                Text('Jenjang: ${_degreeOptions[_degree.value]}'),
-                Text('Jurusan: ${_plainText(_fieldOfStudyController.text)}'),
-                Text('Tahun Masuk: ${_startYearController.text.trim()}'),
+                Text('Institusi: ${education.institution}'),
+                Text('Jenjang: ${education.degreeLabel}'),
+                Text('Jurusan: ${education.fieldOfStudy}'),
+                Text('Tahun Masuk: ${education.startYear}'),
+                Text('Tahun Selesai: ${education.endYear ?? 'Belum selesai'}'),
                 Text(
-                  'Tahun Selesai: ${endYear.isEmpty ? 'Belum selesai' : endYear}',
+                  'URL Logo: ${education.thumbnail.isEmpty ? 'Tidak diisi' : education.thumbnail}',
                 ),
-                Text('URL Logo: ${logoUrl.isEmpty ? 'Tidak diisi' : logoUrl}'),
-                Text('Deskripsi: ${_plainText(_descriptionController.text)}'),
+                Text('Deskripsi: ${education.description}'),
               ],
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('OK'),
+              child: const Text('Lihat Daftar'),
             ),
           ],
         );
@@ -226,8 +297,14 @@ class _EducationFormPageState extends State<EducationFormPage> {
               Align(
                 alignment: Alignment.center,
                 child: ElevatedButton(
-                  onPressed: _showSummary,
-                  child: const Text('Simpan'),
+                  onPressed: _isSubmitting ? null : _submit,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Simpan'),
                 ),
               ),
             ],

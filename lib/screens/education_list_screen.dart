@@ -1,8 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:myportofolio_mobile/models/education.dart';
 import 'package:myportofolio_mobile/screens/education_detail_screen.dart';
+import 'package:myportofolio_mobile/screens/education_form.dart';
 import 'package:myportofolio_mobile/services/api_client.dart';
 import 'package:myportofolio_mobile/widgets/left_drawer.dart';
+import 'package:myportofolio_mobile/widgets/auth_guard.dart';
 import 'package:provider/provider.dart';
 
 class EducationListScreen extends StatefulWidget {
@@ -33,6 +35,17 @@ class _EducationListScreenState extends State<EducationListScreen> {
     }
   }
 
+  Future<void> _addEducation() async {
+    if (!await ensureLoggedIn(context) || !mounted) return;
+    final created = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const EducationFormPage(returnToList: true),
+      ),
+    );
+    if (created == true && mounted) await _reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -42,6 +55,11 @@ class _EducationListScreenState extends State<EducationListScreen> {
         foregroundColor: Colors.white,
       ),
       drawer: const LeftDrawer(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addEducation,
+        icon: const Icon(Icons.add),
+        label: const Text('Tambah Edukasi'),
+      ),
       body: FutureBuilder<List<Education>>(
         future: _educationsFuture,
         builder: (context, snapshot) {
@@ -82,7 +100,7 @@ class _EducationListScreenState extends State<EducationListScreen> {
                   )
                 : ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 88),
                     itemCount: educations.length,
                     itemBuilder: (context, index) {
                       final education = educations[index];
