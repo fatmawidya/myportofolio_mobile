@@ -1,6 +1,8 @@
 # MY PORTFOLIO MOBILE — Fatma Widya Rachma
 
-Aplikasi portofolio pribadi berbasis Flutter untuk Pemrograman Berbasis Platform. Tutorial 10 menghubungkan fitur Proyek ke Django REST Framework, menambahkan autentikasi token, dan menyiapkan CI/CD melalui GitHub Actions. Halaman profil serta formulir Edukasi dari tugas sebelumnya tetap tersedia.
+[![CI](https://github.com/fatmawidya/myportofolio_mobile/actions/workflows/main.yaml/badge.svg?branch=main)](https://github.com/fatmawidya/myportofolio_mobile/actions/workflows/main.yaml)
+
+Aplikasi portofolio pribadi berbasis Flutter untuk Pemrograman Berbasis Platform. Tutorial 10 menghubungkan fitur Proyek ke Django REST Framework, menambahkan autentikasi token, dan menyiapkan CI/CD melalui GitHub Actions. Tugas 9 menerapkan integrasi yang sama pada Edukasi: daftar dan detail bersifat publik, sedangkan penambahan memerlukan token.
 
 ---
 
@@ -21,39 +23,44 @@ Halaman `MyPortfolio` menampilkan tiga `InfoCard` berlabel **NPM**, **Name**, da
 
 ### 2. Menu Aksi dan Drawer
 
-Empat kartu aksi disusun dalam grid dua kolom pada layar sempit dan tiga kolom pada layar yang lebih lebar.
+Lima kartu aksi disusun dalam grid dua kolom pada layar sempit dan tiga kolom pada layar yang lebih lebar.
 
 | Menu | Perilaku |
 | --- | --- |
 | Lihat Proyek | Mengambil daftar proyek dari Django tanpa perlu login; setiap proyek dapat dibuka untuk melihat detailnya. |
 | Tambah Proyek | Meminta login jika belum terautentikasi, lalu membuka formulir yang mengirim proyek ke Django. |
-| Tambah Edukasi | Membuka formulir Edukasi dari Tugas 8. |
+| Lihat Edukasi | Mengambil daftar Edukasi dari Django tanpa login dan membuka detail setiap entri. |
+| Tambah Edukasi | Meminta login, membuka formulir, lalu menyimpan Edukasi ke Django dengan token. |
 | Logout | Memanggil endpoint logout, menghapus token lokal, dan menampilkan status melalui `SnackBar`. Jika belum login, menampilkan pemberitahuan. |
 
-Drawer yang sama digunakan di halaman utama, daftar proyek, dan kedua formulir. Pilihannya adalah **Home**, **Add Project**, **Add Education**, **Projects**, serta **Login** atau **Logout** sesuai status autentikasi. Akses **Add Project** dari drawer juga dilindungi pemeriksaan login.
+Drawer yang sama digunakan di halaman utama, daftar proyek dan Edukasi, serta kedua formulir. Pilihannya adalah **Home**, **Add Project**, **Add Education**, **Projects**, **Education**, serta **Login** atau **Logout** sesuai status autentikasi. Akses **Add Project** dan **Add Education** dari drawer juga dilindungi pemeriksaan login.
 
-### 3. Integrasi Proyek dan Autentikasi — Tutorial 10
+### 3. Integrasi Backend dan Autentikasi
 
 `Project` menggunakan `@JsonSerializable(fieldRename: FieldRename.snake)` untuk memetakan data Dart ke JSON API. Atribut `id` berasal dari server dan tidak dikirim pada POST. `project_image_url` boleh kosong atau bernilai `null` pada respons dan dibaca sebagai string kosong.
+
+`Education` juga menggunakan serialisasi snake_case sesuai `EducationSerializer`. Tahun selesai kosong dikirim sebagai `null`, URL logo kosong/null dibaca sebagai string kosong, dan field milik server (`id`, `degree_display`, `is_current`, `star_count`, `is_starred`) tidak disertakan pada POST.
 
 `ApiClient` menangani permintaan HTTP, sedangkan `AuthState` menyimpan token di memori dan memberi tahu UI ketika status login berubah. Keduanya disediakan melalui `MultiProvider`. Token tidak disimpan permanen, sehingga aplikasi yang dimulai ulang perlu login kembali.
 
 | Metode | Endpoint | Akses dan fungsi |
 | --- | --- | --- |
+| GET | `/api/v1/education/` | Publik; mengambil daftar Edukasi. |
+| POST | `/api/v1/education/` | Token milik superuser; membuat Edukasi. |
 | GET | `/api/v1/projects/` | Publik; mengambil daftar proyek. |
 | POST | `/api/v1/projects/` | Token milik superuser; membuat proyek. |
 | POST | `/api/v1/auth/token/` | Menukar username dan password dengan token. |
 | POST | `/api/v1/auth/logout/` | Mencabut token aktif; respons berhasil berupa HTTP 204. |
 
-Daftar proyek menggunakan `FutureBuilder`, indikator loading, pesan daftar kosong, tombol **Retry** ketika gagal, dan pull-to-refresh. Halaman detail menampilkan judul, deskripsi, teknologi, URL proyek, serta gambar jika URL gambarnya tersedia.
+Daftar proyek dan Edukasi menggunakan `FutureBuilder`, indikator loading, pesan daftar kosong, tombol **Retry** ketika gagal, dan pull-to-refresh. Detail proyek menampilkan judul, deskripsi, teknologi, URL proyek, serta gambar jika tersedia. Detail Edukasi menampilkan seluruh field respons: ID, institusi, jenjang, jurusan, tahun, deskripsi, URL logo, status pendidikan, jumlah bintang, dan status penandaan. Logo hanya dimuat jika URL tersedia.
 
 Form proyek menyediakan **Title**, **Description**, **Tech Stack**, **Project URL**, dan **Project Image URL (Optional)**. Isian wajib dan format URL diperiksa sebelum POST dengan header `Authorization: Token <key>`. Respons berhasil ditampilkan dalam dialog, kemudian form dikosongkan setelah dialog ditutup. Jika server mengembalikan HTTP 401, sesi lokal dihapus dan pengguna diminta login ulang; isian dipertahankan agar dapat dikirim lagi dengan tombol **Save**.
 
-### 4. Formulir Tambah Edukasi — Tugas 8
+### 4. Formulir Tambah Edukasi — Tugas 9
 
 Formulir mengikuti model Edukasi di portofolio Django. Pengguna dapat mengisi nama institusi, jenjang, jurusan, tahun masuk, tahun selesai, URL logo, dan deskripsi. Tahun selesai dan URL logo bersifat opsional. Jika diisi, tahun selesai harus sama dengan atau setelah tahun masuk, dan URL logo harus memakai HTTP atau HTTPS.
 
-Tombol **Simpan** memvalidasi isian lalu menampilkan **Ringkasan Edukasi** dalam dialog. Tombol **OK** menutup dialog dan mengembalikan pengguna ke formulir dengan isian yang sama.
+Tombol **Simpan** memvalidasi isian lalu mengirim POST dengan token. Setelah HTTP 201, dialog menampilkan data yang tersimpan dari server. Tombol **Lihat Daftar** membawa pengguna ke daftar terbaru; jika form dibuka dari daftar, daftar tersebut dimuat ulang. HTTP 400/403 atau kegagalan jaringan mempertahankan isian dan menampilkan pesan. HTTP 401 menghapus sesi dan meminta login ulang; setelah login, tekan **Simpan** lagi.
 
 Kartu **Pratinjau Edukasi** diperbarui saat pengguna mengubah institusi, jenjang, jurusan, atau tahun. Setelah tahun masuk diisi, kartu menampilkan status **Sedang menempuh pendidikan** selama tahun selesai masih kosong.
 
@@ -68,14 +75,17 @@ myportofolio_mobile/
 │   ├── main.dart                  # MultiProvider, MaterialApp, dan tema
 │   ├── config.dart                # API_BASE_URL melalui --dart-define
 │   ├── models/
-│   │   └── project.dart           # Model JSON; project.g.dart dihasilkan otomatis
+│   │   ├── project.dart           # Model JSON Proyek
+│   │   └── education.dart         # Model JSON Edukasi; *.g.dart dihasilkan otomatis
 │   ├── screens/
 │   │   ├── menu.dart              # Halaman utama, kartu profil, dan data menu
 │   │   ├── login_screen.dart      # Login username dan password
 │   │   ├── project_list_screen.dart   # GET proyek, refresh, dan status pemuatan
 │   │   ├── project_detail_screen.dart # Detail proyek dan gambar opsional
 │   │   ├── project_form.dart      # Validasi dan POST proyek dengan token
-│   │   └── education_form.dart    # Formulir Tambah Edukasi
+│   │   ├── education_list_screen.dart   # GET Edukasi publik dan refresh
+│   │   ├── education_detail_screen.dart # Seluruh field Edukasi
+│   │   └── education_form.dart    # Validasi dan POST Edukasi dengan token
 │   ├── services/
 │   │   ├── api_client.dart        # Permintaan HTTP ke Django
 │   │   └── auth_state.dart        # Token di memori dan perubahan status login
@@ -88,7 +98,11 @@ myportofolio_mobile/
 │       └── project_card.dart      # Kartu aksi dan navigasi dari halaman utama
 ├── test/
 │   ├── widget_test.dart           # Model JSON, autentikasi, dan alur Proyek
-│   ├── education_form_test.dart   # Formulir, pratinjau, dan navigasi Edukasi
+│   ├── education_form_test.dart   # Login, validasi, POST, refresh daftar, dan 401
+│   ├── education_api_test.dart    # Serialisasi, header token, dan error API
+│   ├── education_list_test.dart   # Daftar/detail publik, retry, dan refresh
+│   ├── support/
+│   │   └── education_server.dart  # HTTP tiruan untuk tes widget
 │   └── education_validators_test.dart # Validasi tahun dan URL Edukasi
 ├── android/                   # Konfigurasi target Android
 ├── ios/                       # Konfigurasi target iOS
@@ -108,7 +122,7 @@ myportofolio_mobile/
 
 ### 1. Siapkan Flutter SDK dan Chrome
 
-Gunakan Flutter **3.47.9** dengan Dart **3.13.7**, sesuai versi CI, dan pastikan Flutter tersedia di `PATH`. Gunakan Google Chrome sebagai target web.
+Gunakan Flutter **3.47.9** dengan Dart **3.13.7**, sesuai versi yang dipakai pada CI, dan pastikan Flutter tersedia di `PATH`. Gunakan Google Chrome sebagai target web.
 
 ```bash
 flutter --version
@@ -131,7 +145,7 @@ flutter pub get
 dart run build_runner build
 ```
 
-Jalankan kembali `build_runner` setelah mengubah `lib/models/project.dart`. Berkas `*.g.dart` diabaikan oleh Git dan dihasilkan ulang pada CI.
+Jalankan kembali `build_runner` setelah mengubah model di `lib/models/`. Versi build_runner saat ini cukup memakai `dart run build_runner build`; opsi `--delete-conflicting-outputs` pada PDF sudah tidak digunakan. Berkas `*.g.dart` diabaikan oleh Git dan dihasilkan ulang pada CI.
 
 ### 4. Siapkan backend Django
 
@@ -143,16 +157,16 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-Backend Tutorial 10 harus memiliki konfigurasi berikut:
+Backend harus memiliki konfigurasi berikut:
 
 - `corsheaders` dan `rest_framework.authtoken` terdaftar di `INSTALLED_APPS`, serta dependensi `django-cors-headers` terpasang.
 - `CorsMiddleware` berada sebelum `CommonMiddleware`.
 - `TokenAuthentication` berada sebelum `SessionAuthentication`; endpoint proyek menggunakan konfigurasi tersebut.
 - `ALLOWED_HOSTS` mencakup `localhost`, `127.0.0.1`, `10.0.2.2`, dan domain deploy jika digunakan.
 - Untuk Chrome lokal, jalankan backend dengan `PRODUCTION=False` agar konfigurasi CORS lokal berlaku. Untuk Flutter Web yang di-deploy, isi `CORS_ALLOWED_ORIGINS` dengan origin web yang diizinkan.
-- Endpoint pada tabel API di atas tersedia, dan migrasi `authtoken` sudah dijalankan.
+- Endpoint pada tabel API di atas tersedia, migrasi `authtoken` sudah dijalankan, dan view Edukasi menerima `TokenAuthentication` sebelum `SessionAuthentication`.
 
-Gunakan akun **superuser Django** untuk menambah proyek. Jika belum memiliki akun tersebut, jalankan `python manage.py createsuperuser` di repositori Django.
+Gunakan akun **superuser Django** untuk menambah proyek atau Edukasi. Jika belum memiliki akun tersebut, jalankan `python manage.py createsuperuser` di repositori Django.
 
 ### 5. Jalankan aplikasi sesuai perangkat
 
@@ -188,7 +202,7 @@ Ganti `ID_PERANGKAT` dengan ID perangkat dari `flutter devices`.
 flutter run --dart-define=API_BASE_URL=https://fatma-widya-myportofolio.pws.cs.ui.ac.id
 ```
 
-Backend deploy perlu memuat perubahan Tutorial 10. Isi URL dasar tanpa garis miring `/` di akhir. Tekan `q` di terminal untuk menghentikan aplikasi.
+Backend deploy perlu memuat perubahan autentikasi token untuk Proyek dan Edukasi. Untuk Chrome dengan backend produksi, origin Flutter Web juga harus diizinkan pada konfigurasi CORS; gunakan backend lokal untuk pengembangan Chrome dengan port yang berubah-ubah. Isi URL dasar tanpa garis miring `/` di akhir. Tekan `q` di terminal untuk menghentikan aplikasi.
 
 ### 6. Jalankan pemeriksaan lokal
 
@@ -225,40 +239,41 @@ flutter build apk --release --dart-define=API_BASE_URL=https://fatma-widya-mypor
 
 Hasil lokal berada di `build/app/outputs/flutter-apk/app-release.apk`.
 
-Setelah pemeriksaan lokal selesai, commit dan push perubahan Tutorial 10. Di tab **Actions**, pastikan kedua job hijau dan artefak APK tersedia. Kumpulkan tautan commit GitHub melalui slot Tutorial 10 di SCELE.
+Setelah pemeriksaan lokal selesai, commit dan push perubahan Tugas 9. Di tab **Actions**, pastikan kedua job hijau dan artefak APK tersedia. Kumpulkan tautan commit GitHub melalui slot Tugas 9 di SCELE.
 
 ### Pengujian Formulir Edukasi
 
-1. Buka formulir lewat kartu **Tambah Edukasi**. Coba kembali dengan tombol kembali perangkat jika tersedia. Buka lagi lewat **Add Education** di drawer, lalu gunakan **Home** untuk kembali ke halaman utama di Chrome.
-2. Tekan **Simpan** saat nama institusi kosong. Pastikan pesan muncul pada kolom tersebut. Coba juga tahun masuk `2024` dan tahun selesai `2023`, atau URL logo `ftp://example.com/logo.png`. Pesan harus muncul pada kolom yang salah.
-3. Isi seluruh kolom yang wajib dan pilih jenjang. Coba tahun masuk `2024`, tahun selesai `2027`, dan URL logo `https://example.com/logo.png`. Tekan **Simpan**, cocokkan ketujuh isian di dialog, lalu tekan **OK** untuk kembali ke formulir.
-4. Ulangi pada Chrome dengan lebar layar sekitar 360 piksel. Gulir formulir dan pastikan semua kolom serta tombol **Simpan** bisa dijangkau.
+1. Buka **Lihat Edukasi** sebelum login. Cocokkan data dengan Django, buka detail, dan coba pull-to-refresh. Coba juga **Education** di drawer.
+2. Buka form lewat kartu **Tambah Edukasi**, **Add Education** di drawer, atau tombol tambah pada daftar. Pastikan login diminta. Gunakan akun superuser.
+3. Coba institusi kosong, tahun selesai sebelum tahun masuk, dan URL logo yang tidak valid. Pastikan pesan kesalahan muncul dan data tidak tersimpan.
+4. Lengkapi isian dan tekan **Simpan**. Cocokkan dialog dengan isian, pilih **Lihat Daftar**, lalu pastikan entri muncul juga di halaman Edukasi Django setelah refresh. Ulangi pada layar 360 piksel.
+5. Untuk menguji 401 secara lokal, login lalu hapus token melalui Django admin. Kirim form; aplikasi harus meminta login ulang dan mempertahankan isian. Setelah login, tekan **Simpan** lagi. Logout lalu pastikan daftar publik tetap dapat dibuka.
 
 ---
 
 ## 🌐 Portofolio Versi Web
 
-Versi Django tersedia sebagai proyek terpisah. [Fatma's Portfolio Web](https://fatma-widya-myportofolio.pws.cs.ui.ac.id/) · [Repositori Django](https://github.com/fatmawidya/myportofolio)
+Versi Django tersedia sebagai proyek terpisah. [Fatma's Portfolio Web](https://fatma-widya-myportofolio.pws.cs.ui.ac.id/) · [Repositori Django](https://github.com/fatmawidya/myportofolio) · [API Edukasi publik](https://fatma-widya-myportofolio.pws.cs.ui.ac.id/api/v1/education/)
 
 ---
 
-### Tugas 8
+### Assignment 9
 
-1. **Jelaskan perbedaan antara `Navigator.push()`, `Navigator.pushReplacement()`, dan `Navigator.pop()`. Metode apa yang digunakan untuk membuka formulir dari kartu aksi? Jelaskan juga bagaimana opsi Home di drawer membawa pengguna kembali ke halaman utama.**
+1. **Mengapa memakai `@JsonSerializable(fieldRename: FieldRename.snake)` dan `@JsonKey(includeToJson: false)` daripada menyusun Map mentah di widget?**
 
-   `push()` menaruh halaman baru di atas halaman yang sedang aktif. Kartu **Tambah Edukasi** memakainya supaya halaman utama masih ada di bawah form dan tombol kembali perangkat bisa membukanya lagi. `pushReplacement()` mengganti halaman aktif dengan halaman baru. Opsi **Home** di drawer memakainya untuk mengganti halaman form dengan `MyHomePage`. `pop()` mengeluarkan rute teratas. Di form Edukasi, tombol **OK** memanggilnya untuk menutup dialog dan kembali ke form dengan isian yang sama.
+   Model membuat kontrak data API terpusat dan bertipe jelas. `fieldRename` memetakan atribut Dart `fieldOfStudy`, `startYear`, dan `endYear` menjadi kunci DRF `field_of_study`, `start_year`, dan `end_year`. Widget cukup membentuk `Education`, sementara generator mengurus serialisasi. `includeToJson: false` mengecualikan UUID dan informasi hasil perhitungan server dari POST. Dengan demikian, form tidak bisa tanpa sengaja mengirim ulang ID entri lain ketika membuat entri baru. Pendekatan ini juga mencegah kesalahan nama `fieldOfStudy` pada body JSON yang akan membuat DRF menganggap `field_of_study` tidak diisi. Tahun bertipe `int`/`int?`, dan tahun selesai kosong dikirim sebagai `null` alih-alih string kosong.
 
-2. **Bagaimana susunan `Scaffold`, `AppBar`, dan `Drawer` membantu menjaga struktur halaman tetap konsisten? Berikan satu contoh penggunaan warna tema portofolio di lebih dari satu halaman.**
+2. **Mengapa Future dibuat di `initState()` dan respons HTTP non-2xx melempar `ApiException`?**
 
-   `Scaffold` mengatur tempat untuk bilah atas, isi halaman, dan drawer. `AppBar` memberi judul sesuai halaman, sedangkan `LeftDrawer` menyediakan menu yang sama dari halaman utama dan kedua formulir. Contohnya, `AppBar` di halaman utama dan form Edukasi sama-sama mengambil warna latar dari `Theme.of(context).colorScheme.primary`, dengan judul dan ikon berwarna putih.
+   `build()` dapat dipanggil berulang ketika tema, ukuran layar, atau state berubah. Membuat request di sana akan menghasilkan Future baru pada setiap build, memicu GET berulang dan mereset keadaan loading. `EducationListScreen` menyimpan Future dari `initState()` dan hanya menggantinya ketika pengguna meminta refresh/retry atau berhasil membuat entri. `ApiException` mempertahankan perbedaan antara kegagalan dan hasil kosong yang sah. Mengembalikan `null` pada HTTP 500 dapat membuat UI salah menampilkan "Belum ada edukasi"; melempar exception memungkinkan `FutureBuilder` menampilkan error dan Retry. Pada POST, status 401 dapat diarahkan ke pemulihan sesi, sedangkan 403 menunjukkan bahwa akun tidak memiliki izin menulis.
 
-3. **Mengapa tata letak tersebut dipilih untuk formulir? Jelaskan peran widget pengatur jarak dan widget penggulir ketika ruang layar terbatas.**
+3. **Apa perbedaan SessionAuthentication dan TokenAuthentication, dan mengapa keduanya tetap digunakan?**
 
-   Ketujuh input disusun vertikal dengan `Column` supaya pengguna bisa mengisi form dari atas ke bawah. `EdgeInsets.all(16)` memberi jarak antara isi form dan tepi layar, sedangkan `SizedBox` memberi jarak antarinput. `SingleChildScrollView` membuat kolom di bagian bawah dan tombol **Simpan** tetap bisa dijangkau saat layar sempit atau ruang berkurang karena keyboard.
+   SessionAuthentication mengenali pengguna melalui cookie sesi Django. Browser mengirim cookie tersebut dan operasi tulis dengan sesi memerlukan token CSRF. TokenAuthentication memeriksa header `Authorization: Token <key>` pada setiap request, sehingga Flutter tidak perlu mengelola cookie sesi dan mekanisme CSRF browser. Aplikasi menyimpan token di `AuthState`, menambahkannya pada POST, lalu menghapus sesi lokal saat logout atau 401. Backend tetap mengaktifkan sesi untuk situs Django dan browsable API. Token ditempatkan lebih dulu sehingga token tidak sah atau autentikasi yang diperlukan dapat menghasilkan HTTP 401. Autentikasi mengenali identitas; permission backend tetap menentukan apakah pengguna boleh membuat entri, sehingga token pengguna biasa tidak setara dengan izin superuser.
 
-4. **Apa peran `GlobalKey<FormState>`, `validator`, dan `validate()` saat tombol Simpan ditekan? Berikan satu contoh nilai yang ditolak oleh validasi dan jelaskan mengapa memilih jenis input atau papan ketik saja belum cukup.**
+4. **Apa peran `build` dan `build_apk`, dan mengapa `*.g.dart` diabaikan Git?**
 
-   `GlobalKey<FormState>` memberi tombol **Simpan** akses ke status form. Saat tombol ditekan, `validate()` menjalankan `validator` pada kolom yang memilikinya. Jika ada nilai yang tidak valid, pesan muncul di kolom terkait dan dialog baru dapat dibuka setelah semua isian lolos. Misalnya, tahun selesai `2023` ditolak jika tahun masuk `2024`. Papan ketik numerik memudahkan mengetik angka, tetapi pemeriksaan urutan tahun dan nilai yang ditempel tetap memerlukan validasi.
+   `build` menjalankan workflow bersama yang memasang dependensi, menjalankan setup generator, memeriksa pemformatan dan static analysis, lalu menjalankan tes serta coverage. `build_apk` memiliki `needs: build`, sehingga APK hanya dibangun setelah pemeriksaan tersebut lulus. Job kedua menghasilkan kembali model, mengompilasi release dengan URL backend yang dipilih, dan mengunggah `app-release-apk`. Berkas `.g.dart` adalah turunan dari model beranotasi dan versi dependensi pada lockfile; menyimpannya di Git menambah perubahan hasil generator serta potensi konflik. CI tidak membutuhkan salinan yang di-commit karena `build_runner` dijalankan sebelum analisis, tes, dan kompilasi. Karena itu clone baru juga harus menjalankan generator sebelum menjalankan aplikasi.
 
 ---
 
